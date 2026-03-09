@@ -26,3 +26,22 @@ We are not accepting contributions yet.
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
 
 Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+
+## Local Postgres
+
+If you need a local Postgres instance for development, this repo includes a Docker Compose service at the repo root.
+
+```bash
+docker compose up -d postgres
+```
+
+Default connection details:
+
+```text
+host=localhost
+port=5432
+user=postgres
+password=postgres
+database=postgres
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
+```

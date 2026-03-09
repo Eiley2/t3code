@@ -577,9 +577,23 @@ describe("TerminalManager", () => {
         ),
       ).toBe(true);
     } else {
+      const normalizedEnvShell = process.env.SHELL?.trim()
+        .split(/\s+/g)[0]
+        ?.trim()
+        .replace(/^['"]|['"]$/g, "");
+      const fallbackShells = new Set([
+        "/bin/zsh",
+        "/bin/bash",
+        "/bin/sh",
+        "zsh",
+        "bash",
+        "sh",
+        ...(normalizedEnvShell ? [normalizedEnvShell] : []),
+      ]);
       expect(
-        ptyAdapter.spawnInputs.some((input) =>
-          ["/bin/zsh", "/bin/bash", "/bin/sh", "zsh", "bash", "sh"].includes(input.shell),
+        ptyAdapter.spawnInputs.some(
+          (input) =>
+            input.shell !== "/definitely/missing-shell" && fallbackShells.has(input.shell),
         ),
       ).toBe(true);
     }

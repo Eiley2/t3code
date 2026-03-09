@@ -761,6 +761,104 @@ describe("WebSocket Server", () => {
     expectAvailableEditors((response.result as { availableEditors: unknown }).availableEditors);
   });
 
+  it("lists server directories over websocket", async () => {
+    const workspace = makeTempDir("t3code-server-list-dir-");
+    fs.mkdirSync(path.join(workspace, "src"));
+    fs.writeFileSync(path.join(workspace, "README.md"), "# test\n", "utf8");
+
+    server = await createTestServer({ cwd: workspace });
+    const addr = server.address();
+    const port = typeof addr === "object" && addr !== null ? addr.port : 0;
+
+    const ws = await connectWs(port);
+    connections.push(ws);
+    await waitForMessage(ws);
+
+    const response = await sendRequest(ws, WS_METHODS.serverListDirectory, {
+      path: workspace,
+      includeHidden: false,
+      directoriesOnly: false,
+      query: "",
+      limit: 10,
+    });
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({
+      currentPath: workspace,
+      parentPath: path.dirname(workspace) === workspace ? null : path.dirname(workspace),
+      breadcrumbs: expect.any(Array),
+      shortcuts: expect.arrayContaining([
+        expect.objectContaining({ kind: "serverCwd", path: workspace }),
+        expect.objectContaining({ kind: "home" }),
+        expect.objectContaining({ kind: "root" }),
+      ]),
+      entries: [
+        {
+          name: "src",
+          path: path.join(workspace, "src"),
+          kind: "directory",
+          isHidden: false,
+          isSymlink: false,
+        },
+        {
+          name: "README.md",
+          path: path.join(workspace, "README.md"),
+          kind: "file",
+          isHidden: false,
+          isSymlink: false,
+        },
+      ],
+      truncated: false,
+    });
+  });
+
+  it("defaults server.listDirectory to the server cwd", async () => {
+    const workspace = makeTempDir("t3code-server-list-dir-default-");
+    fs.mkdirSync(path.join(workspace, "docs"));
+
+    server = await createTestServer({ cwd: workspace });
+    const addr = server.address();
+    const port = typeof addr === "object" && addr !== null ? addr.port : 0;
+
+    const ws = await connectWs(port);
+    connections.push(ws);
+    await waitForMessage(ws);
+
+    const response = await sendRequest(ws, WS_METHODS.serverListDirectory);
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual(
+      expect.objectContaining({
+        currentPath: workspace,
+        entries: [
+          expect.objectContaining({
+            name: "docs",
+            kind: "directory",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("returns an error for invalid server.listDirectory paths", async () => {
+    server = await createTestServer({ cwd: "/test" });
+    const addr = server.address();
+    const port = typeof addr === "object" && addr !== null ? addr.port : 0;
+
+    const ws = await connectWs(port);
+    connections.push(ws);
+    await waitForMessage(ws);
+
+    const response = await sendRequest(ws, WS_METHODS.serverListDirectory, {
+      path: "/definitely/missing/path",
+    });
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toEqual({
+      message: expect.stringContaining("Failed to list server directory"),
+    });
+  });
+
   it("bootstraps default keybindings file when missing", async () => {
     const stateDir = makeTempDir("t3code-state-bootstrap-keybindings-");
     const keybindingsPath = path.join(stateDir, "keybindings.json");

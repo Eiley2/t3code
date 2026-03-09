@@ -349,6 +349,28 @@ describe("wsNativeApi", () => {
     });
   });
 
+  it("forwards server directory listings to the websocket server method", async () => {
+    requestMock.mockResolvedValue({ currentPath: "/tmp/project", entries: [] });
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.server.listDirectory({
+      path: "/tmp/project",
+      directoriesOnly: true,
+      includeHidden: false,
+      query: "src",
+      limit: 25,
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverListDirectory, {
+      path: "/tmp/project",
+      directoriesOnly: true,
+      includeHidden: false,
+      query: "src",
+      limit: 25,
+    });
+  });
+
   it("forwards full-thread diff requests to the orchestration websocket method", async () => {
     requestMock.mockResolvedValue({ diff: "patch" });
     const { createWsNativeApi } = await import("./wsNativeApi");

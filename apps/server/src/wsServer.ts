@@ -73,6 +73,7 @@ import {
 import { parseBase64DataUrl } from "./imageMime.ts";
 import { AnalyticsService } from "./telemetry/Services/AnalyticsService.ts";
 import { expandHomePath } from "./os-jank.ts";
+import { listServerDirectory } from "./serverFilesystem";
 
 /**
  * ServerShape - Service API for server lifecycle control.
@@ -794,6 +795,17 @@ export const createServer = Effect.fn(function* (): Effect.fn.Return<
           ),
         );
         return { relativePath: target.relativePath };
+      }
+
+      case WS_METHODS.serverListDirectory: {
+        const body = stripRequestTag(request.body);
+        return yield* Effect.tryPromise({
+          try: () => listServerDirectory(body, { serverCwd: serverConfig.cwd }),
+          catch: (cause) =>
+            new RouteRequestError({
+              message: `Failed to list server directory: ${String(cause)}`,
+            }),
+        });
       }
 
       case WS_METHODS.shellOpenInEditor: {
